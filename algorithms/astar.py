@@ -109,6 +109,8 @@ def astar(
 
         for v, weight in graph.get_neighbors(u):
             edges_relaxed += 1
+            if v in visited:
+                continue
             tentative_g = g + weight
             old_g = g_score.get(v, float("inf"))
 
