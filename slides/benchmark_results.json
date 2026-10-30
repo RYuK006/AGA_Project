@@ -1,0 +1,18 @@
+{
+  "sample_size": 300,
+  "bellman_sample_size": 30,
+  "graph_nodes_count": 238,
+  "graph_edges_count": 699,
+  "cost_equality_pass_rate": 100.0,
+  "dijkstra_nodes_mean": 120.107,
+  "dijkstra_nodes_median": 115.5,
+  "astar_nodes_mean": 59.897,
+  "astar_nodes_median": 45.0,
+  "dijkstra_time_mean": 1.826,
+  "astar_time_mean": 3.583,
+  "bellman_time_mean": 17.759,
+  "node_reduction_ratio": 2.01,
+  "runtime_speedup_ratio": 0.51,
+  "bellman_slowdown_ratio": 9.7,
+  "interpretation": "Across N=300 randomized queries on a road network of 238 intersections: A* expanded an average of 59.9 nodes vs 120.1 for Dijkstra (2.01x exploration efficiency), achieving 100% identical optimal costs. Bellman-Ford was verified on 30 queries, demonstrating identical optimality but suffering a 9.7x runtime penalty due to its O(V*E) edge relaxation passes."
+}
