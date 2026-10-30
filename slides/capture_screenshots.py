@@ -9,8 +9,15 @@ Also executes the 300-query benchmark and saves real numbers to `benchmark_resul
 """
 
 import os
+import sys
 import json
 import time
+
+# Ensure project root is in sys.path
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
 from playwright.sync_api import sync_playwright
 from benchmark.runner import run_benchmark
 from graph.city_graph import get_city_graph
