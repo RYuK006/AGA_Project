@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Ambulance Routing System | KTU B.Tech S5 Graph Algorithms</title>
+  
+  <!-- Modern Clean Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Project Stylesheet -->
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="badge-ktu">KTU B.Tech S5 • Advanced Graph Algorithms</div>
+      <h1>Emergency Ambulance Routing System</h1>
+      <p class="subtitle">Empirical & Pedagogical Study: Dijkstra O((V+E) log V) vs A* (Admissible Heuristic) vs Bellman-Ford O(VE)</p>
+    </div>
+    <div class="header-right">
+      <div id="city-status-pill" class="status-pill">Loading Graph...</div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="tabs-nav" id="tabsNav">
+    <button class="tab-btn active" data-tab="tab-learn">
+      <span class="tab-num">1</span>
+      <span class="tab-title">Learn (Toy Graph)</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-dispatch">
+      <span class="tab-num">2</span>
+      <span class="tab-title">City Dispatch & Frontier</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-benchmark">
+      <span class="tab-num">3</span>
+      <span class="tab-title">Benchmark & Cost Equality</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-negative">
+      <span class="tab-num">4</span>
+      <span class="tab-title">Negative Weights & Preemption</span>
+    </button>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    
+    <!-- ========================================================== -->
+    <!-- TAB 1: LEARN (TOY GRAPH STEP-BY-STEP TRACE)               -->
+    <!-- ========================================================== -->
+    <section id="tab-learn" class="tab-pane active">
+      <div class="pane-grid">
+        <!-- Left Column: Interactive Diagram -->
+        <div class="card visual-card">
+          <div class="card-header">
+            <div>
+              <h2>Ground-Truth 5-Node Road Network</h2>
+              <p class="text-muted">Exact syllabus model: S (Station), P & Q (Junctions), I (Incident), H (Hospital). Expected shortest S&rarr;H = 130s via S&rarr;P&rarr;I&rarr;H.</p>
+            </div>
+            <div class="controls-row">
+              <label for="toy-algo-select">Algorithm:</label>
+              <select id="toy-algo-select" class="select-input">
+                <option value="dijkstra">Dijkstra's SSSP (Min-Heap)</option>
+                <option value="astar">A* Search (f = g + h)</option>
+                <option value="bellman_ford">Bellman-Ford (V-1 Passes)</option>
+              </select>
+              <button id="btn-toy-step" class="btn btn-secondary">Step &rarr;</button>
+              <button id="btn-toy-play" class="btn btn-primary">&#9654; Play</button>
+              <button id="btn-toy-reset" class="btn btn-outline">&#8634; Reset</button>
+            </div>
+          </div>
+
+          <div class="svg-container">
+            <svg id="toy-svg" viewBox="0 0 880 480" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+
+          <!-- Color Legend -->
+          <div class="legend-bar">
+            <div class="legend-item"><span class="legend-swatch node-unvisited"></span> Unvisited</div>
+            <div class="legend-item"><span class="legend-swatch node-current"></span> Current Node</div>
+            <div class="legend-item"><span class="legend-swatch node-visited"></span> Visited / Closed</div>
+            <div class="legend-item"><span class="legend-swatch edge-relaxing"></span> Relaxing Edge</div>
+            <div class="legend-item"><span class="legend-swatch edge-optimal"></span> Final Shortest Path</div>
+          </div>
+
+          <!-- Live Plain-English Caption Box -->
+          <div class="caption-card">
+            <div class="caption-label">STEP EXPLANATION</div>
+            <div id="toy-caption" class="caption-text">Click "Step" or "Play" to trace the algorithm step-by-step.</div>
+          </div>
+        </div>
+
+        <!-- Right Column: State & Data Tables -->
+        <div class="card state-card">
+          <div class="state-header">
+            <h3>Algorithm State Trace</h3>
+            <div id="toy-step-counter" class="step-badge">Step 0 / 0</div>
+          </div>
+
+          <!-- Metrics summary -->
+          <div class="mini-metrics">
+            <div class="metric-box">
+              <span class="m-val" id="toy-stat-cost">&mdash;</span>
+              <span class="m-lbl">Current Cost to H</span>
+            </div>
+            <div class="metric-box">
+              <span class="m-val" id="toy-stat-expanded">0</span>
+              <span class="m-lbl">Nodes Expanded</span>
+            </div>
+            <div class="metric-box">
+              <span class="m-val" id="toy-stat-relaxed">0</span>
+              <span class="m-lbl">Edges Relaxed</span>
+            </div>
+          </div>
+
+          <!-- Live Distance Table -->
+          <div class="table-container">
+            <h4>Live Distance & Parent Table (g-score)</h4>
+            <table class="data-table" id="toy-dist-table">
+              <thead>
+                <tr>
+                  <th>Node</th>
+                  <th>Role</th>
+                  <th>Dist (s)</th>
+                  <th>Parent</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="toy-dist-tbody">
+                <!-- Dynamically generated rows -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Live Heap / Queue / Pass Box -->
+          <div class="queue-container">
+            <h4 id="toy-queue-title">Min-Heap Contents (Priority Queue)</h4>
+            <div id="toy-queue-content" class="queue-chips">
+              <span class="chip-empty">Queue is empty</span>
+            </div>
+          </div>
+
+          <!-- Algorithm complexity note -->
+          <div class="info-callout" id="toy-algo-note">
+            <strong>Dijkstra Invariant:</strong> At every step, the unvisited vertex with the minimum tentative distance is selected and finalized. Requires edge weights &ge; 0. Time: O((V+E) log V).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- TAB 2: CITY DISPATCH & FRONTIER COMPARISON                 -->
+    <!-- ========================================================== -->
+    <section id="tab-dispatch" class="tab-pane">
+      <div class="dispatch-layout">
+        <!-- Left: Map & Controls -->
+        <div class="card map-card">
+          <div class="card-header">
+            <div>
+              <h2>Interactive Emergency Dispatch Map</h2>
+              <p class="text-muted">Click anywhere on the map or road network to position the emergency incident scene.</p>
+            </div>
+            <div class="dispatch-actions">
+              <button id="btn-quick-incident" class="btn btn-secondary">&#9673; Place Demo Incident</button>
+              <button id="btn-run-dispatch" class="btn btn-danger">&#128657; Dispatch Ambulance</button>
+            </div>
+          </div>
+
+          <!-- Leaflet Map Container -->
+          <div id="city-map" class="map-view"></div>
+
+          <!-- Frontier Animation Bar -->
+          <div class="frontier-ctrl-bar">
+            <div class="frontier-toggle-group">
+              <label class="switch-label">
+                <input type="checkbox" id="toggle-frontier" checked>
+                <span>Animate Search Frontier (Dijkstra vs A* Side-by-Side)</span>
+              </label>
+              <button id="btn-replay-frontier" class="btn btn-outline btn-sm">&#8635; Replay Frontier</button>
+            </div>
+            <div class="frontier-counters">
+              <span class="fc-item"><strong>Dijkstra Expansions:</strong> <span id="fc-dijkstra-nodes">&mdash;</span> (<span id="fc-dijkstra-time">&mdash;</span> ms)</span>
+              <span class="fc-sep">|</span>
+              <span class="fc-item"><strong>A* Expansions:</strong> <span id="fc-astar-nodes">&mdash;</span> (<span id="fc-astar-time">&mdash;</span> ms)</span>
+            </div>
+          </div>
+
+          <!-- Project Assumption Banner -->
+          <div class="assumption-banner">
+            <span class="badge-assumption">PROJECT ASSUMPTION</span>
+            <span>Hospital Ranking: <code>score(h) = travel_time(h) + &lambda; * unavailability_penalty(h)</code>. Synthetic hospital & ambulance locations. Free-flow travel times.</span>
+          </div>
+        </div>
+
+        <!-- Right: Dispatch Decision Panel -->
+        <div class="card decision-panel">
+          <h3>Emergency Call Controller</h3>
+          
+          <div class="control-box">
+            <label for="dispatch-specialty">Emergency Specialty Requirement:</label>
+            <select id="dispatch-specialty" class="select-input">
+              <option value="trauma" selected>Severe Trauma (Accident / Critical)</option>
+              <option value="cardiac">Cardiac Emergency (Chest Pain / Arrest)</option>
+              <option value="neurology">Neurology / Stroke Specialist</option>
+              <option value="general">General Emergency</option>
+            </select>
+          </div>
+
+          <div class="control-box">
+            <div class="slider-header">
+              <label for="lambda-slider">Unavailability Trade-off (&lambda;):</label>
+              <span id="lambda-val" class="slider-badge">1.0</span>
+            </div>
+            <input type="range" id="lambda-slider" min="0.0" max="4.0" step="0.2" value="1.0" class="slider-input">
+            <p class="slider-help">
+              &lambda;=0: Pure travel-time routing (closest hospital). &lambda;&gt;0: Diverts away from congested or non-specialized hospitals. Drag slider to see chosen hospital update dynamically!
+            </p>
+          </div>
+
+          <!-- Selected Route Mission Summary -->
+          <div class="mission-summary-card" id="mission-card">
+            <h4>Optimal Mission Plan</h4>
+            <div class="mission-grid">
+              <div class="m-item">
+                <span class="m-title">Assigned Ambulance</span>
+                <span class="m-big" id="res-amb-id">&mdash;</span>
+                <span class="m-sub" id="res-amb-time">Time to Scene: &mdash;</span>
+              </div>
+              <div class="m-item">
+                <span class="m-title">Selected Hospital</span>
+                <span class="m-big" id="res-hosp-name">&mdash;</span>
+                <span class="m-sub" id="res-hosp-time">Scene to ER: &mdash;</span>
+              </div>
+            </div>
+            <div class="mission-total">
+              <span>Total Response + Transport Time:</span>
+              <strong id="res-total-time">&mdash;</strong>
+            </div>
+          </div>
+
+          <!-- Stage 1 Results: Ranked Ambulances -->
+          <div class="section-block">
+            <h4>
+              <span>Ambulance Ranking</span>
+              <span class="algo-tag">Reversed Dijkstra: O((V+E) log V)</span>
+            </h4>
+            <div class="amb-list-scroll" id="amb-list-container">
+              <p class="text-muted">Click "Dispatch Ambulance" to compute optimal units.</p>
+            </div>
+          </div>
+
+          <!-- Stage 2 Results: Ranked Hospitals -->
+          <div class="section-block">
+            <h4>
+              <span>Hospital Scoring & Selection</span>
+              <span class="algo-tag">A* Point-to-Point Search</span>
+            </h4>
+            <div class="hosp-list-scroll" id="hosp-list-container">
+              <p class="text-muted">Hospitals ranked by multi-criteria score formula.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- TAB 3: BENCHMARK & COST EQUALITY                          -->
+    <!-- ========================================================== -->
+    <section id="tab-benchmark" class="tab-pane">
+      <div class="benchmark-layout">
+        <div class="card benchmark-header-card">
+          <div class="card-header">
+            <div>
+              <h2>Empirical Performance Benchmark</h2>
+              <p class="text-muted">Large-scale randomized query evaluation comparing node expansion, execution speed, and rigorous optimality equality.</p>
+            </div>
+            <div class="benchmark-controls">
+              <label for="bench-queries-input">Queries (N):</label>
+              <input type="number" id="bench-queries-input" value="300" min="50" max="600" step="50" class="number-input">
+              <button id="btn-run-benchmark" class="btn btn-primary">&#9881; Execute Benchmark</button>
+            </div>
+          </div>
+
+          <!-- Progress and Status -->
+          <div id="bench-progress-bar-container" class="progress-bar-container" style="display:none;">
+            <div id="bench-progress-bar" class="progress-bar"></div>
+          </div>
+
+          <!-- Headline Statistical Cards -->
+          <div class="stats-cards-row">
+            <div class="stat-card">
+              <span class="sc-title">Path Cost Equality</span>
+              <span class="sc-val text-success" id="stat-equality-pass">100.0%</span>
+              <span class="sc-sub">Identical cost across all 3 algorithms</span>
+            </div>
+            <div class="stat-card">
+              <span class="sc-title">A* Node Reduction</span>
+              <span class="sc-val text-primary" id="stat-node-ratio">&mdash;</span>
+              <span class="sc-sub">Fewer nodes expanded vs Dijkstra</span>
+            </div>
+            <div class="stat-card">
+              <span class="sc-title">A* Mean Runtime</span>
+              <span class="sc-val" id="stat-astar-time">&mdash;</span>
+              <span class="sc-sub">vs Dijkstra <span id="stat-dijkstra-time">&mdash;</span></span>
+            </div>
+            <div class="stat-card">
+              <span class="sc-title">Bellman-Ford Overhead</span>
+              <span class="sc-val text-danger" id="stat-bellman-slowdown">&mdash;</span>
+              <span class="sc-sub">O(VE) edge passes vs heap SSSP</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+          <div class="card chart-card">
+            <div class="chart-header">
+              <h3>Search Space Exploration: Nodes Expanded</h3>
+              <p class="text-muted">Distribution of states popped from heap (A* directed heuristic vs Dijkstra circular expansion)</p>
+            </div>
+            <div class="chart-canvas-wrapper">
+              <canvas id="chart-nodes"></canvas>
+            </div>
+          </div>
+
+          <div class="card chart-card">
+            <div class="chart-header">
+              <h3>Execution Latency Distribution (ms)</h3>
+              <p class="text-muted">Pure Python wall-clock execution time per query</p>
+            </div>
+            <div class="chart-canvas-wrapper">
+              <canvas id="chart-time"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cost Equality Verification Table -->
+        <div class="card table-card">
+          <div class="card-header">
+            <div>
+              <h3>Algorithmic Ground-Truth Cost Equality Audit</h3>
+              <p class="text-muted">Demonstrates that A*'s heuristic is strictly admissible (cost matches Dijkstra) and Bellman-Ford achieves identical global minimums on non-negative graphs.</p>
+            </div>
+            <div id="equality-summary-badge" class="badge-success-pill">All Queried Costs Equal</div>
+          </div>
+
+          <div class="table-container bench-table-scroll">
+            <table class="data-table" id="bench-results-table">
+              <thead>
+                <tr>
+                  <th>Query ID</th>
+                  <th>Source &rarr; Target</th>
+                  <th>Dijkstra Cost (s)</th>
+                  <th>A* Cost (s)</th>
+                  <th>Bellman-Ford Cost (s)</th>
+                  <th>Costs Equal?</th>
+                  <th>Dijkstra Nodes</th>
+                  <th>A* Nodes</th>
+                  <th>Dijkstra (ms)</th>
+                  <th>A* (ms)</th>
+                  <th>Bellman-Ford (ms)</th>
+                </tr>
+              </thead>
+              <tbody id="bench-tbody">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Academic Interpretation Callout -->
+          <div class="academic-callout" id="bench-interpretation-box">
+            <strong>Honest Academic Evaluation:</strong>
+            <p id="bench-interpretation-text">Execute the benchmark above to view the live empirical report.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- TAB 4: NEGATIVE WEIGHTS & PREEMPTION                       -->
+    <!-- ========================================================== -->
+    <section id="tab-negative" class="tab-pane">
+      <div class="pane-grid">
+        <!-- Left: Negative Graph Visualization -->
+        <div class="card visual-card">
+          <div class="card-header">
+            <div>
+              <h2>Negative Edge Weights & Bellman-Ford</h2>
+              <p class="text-muted">Why Dijkstra's greedy invariant fails when edge weights are negative, and how Bellman-Ford detects negative-weight cycles in Pass V.</p>
+            </div>
+            <div class="controls-row">
+              <label for="negative-scenario-select">Scenario:</label>
+              <select id="negative-scenario-select" class="select-input">
+                <option value="credit">Scenario A: Signal-Preemption Credit (Dijkstra Fails)</option>
+                <option value="cycle">Scenario B: Unbounded Negative-Weight Cycle (Pass V)</option>
+              </select>
+              <button id="btn-neg-step" class="btn btn-secondary">Step &rarr;</button>
+              <button id="btn-neg-compare" class="btn btn-primary">&#9878; Compare Dijkstra vs Bellman-Ford</button>
+              <button id="btn-neg-reset" class="btn btn-outline">&#8634; Reset</button>
+            </div>
+          </div>
+
+          <div class="svg-container">
+            <svg id="neg-svg" viewBox="0 0 880 480" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+
+          <!-- Negative Caption -->
+          <div class="caption-card">
+            <div class="caption-label">THEORETICAL EXPLANATION</div>
+            <div id="neg-caption" class="caption-text">Select a scenario above and click "Compare" to inspect how each algorithm handles negative weights.</div>
+          </div>
+
+          <!-- Assumption banner -->
+          <div class="assumption-banner">
+            <span class="badge-assumption">MODELLING ASSUMPTION</span>
+            <span>Signal-preemption green wave credits (-4s or -10s) are a pedagogical modeling assumption for ITS, not native to OSM standard road datasets.</span>
+          </div>
+        </div>
+
+        <!-- Right: Side-by-Side Comparison Outcome -->
+        <div class="card state-card">
+          <h3>Theoretical Comparison</h3>
+
+          <!-- Result Comparison Cards -->
+          <div class="neg-comparison-grid">
+            <div class="neg-res-card dijkstra-card" id="neg-card-dijkstra">
+              <div class="nc-header">Dijkstra's Algorithm</div>
+              <div class="nc-cost-val" id="neg-dijkstra-cost">&mdash;</div>
+              <div class="nc-path-text" id="neg-dijkstra-path">Path: &mdash;</div>
+              <div class="nc-verdict" id="neg-dijkstra-verdict">Waiting to run...</div>
+            </div>
+
+            <div class="neg-res-card bellman-card" id="neg-card-bellman">
+              <div class="nc-header">Bellman-Ford Algorithm</div>
+              <div class="nc-cost-val" id="neg-bellman-cost">&mdash;</div>
+              <div class="nc-path-text" id="neg-bellman-path">Path: &mdash;</div>
+              <div class="nc-verdict" id="neg-bellman-verdict">Waiting to run...</div>
+            </div>
+          </div>
+
+          <!-- Mathematical Proof Callout -->
+          <div class="theory-callout" id="neg-theory-content">
+            <h4>Mathematical Reason for Dijkstra's Failure:</h4>
+            <p>
+              Dijkstra’s algorithm assumes that once a vertex <em>u</em> is extracted from the priority queue (marked <em>visited</em>), its distance label <code>dist[u]</code> is permanent and cannot be decreased by any subsequent path.
+            </p>
+            <p>
+              In Scenario A, node <strong>A</strong> is popped first with distance <strong>3.0s</strong> (since 3.0 &lt; 5.0). Dijkstra permanently finalizes A and relaxes A&rarr;H to 13.0s. Later, node B is processed. The edge B&rarr;A offers a green-wave credit of -4.0s (yielding 5.0 - 4.0 = 1.0s &lt; 3.0s), but because A is already in the visited set, Dijkstra’s greedy invariant ignores this shorter route!
+            </p>
+            <p>
+              In contrast, <strong>Bellman-Ford performs (V - 1) full relaxation passes</strong> across all edges, allowing the negative credit to propagate to A in Pass 2 and onward to H in Pass 3, discovering the true global optimum (11.0s).
+            </p>
+          </div>
+
+          <!-- Negative Cycle Alert Box -->
+          <div class="alert-box-cycle" id="neg-cycle-alert" style="display:none;">
+            <div class="alert-title">&#9888; PASS V: NEGATIVE CYCLE CONFIRMED</div>
+            <p>
+              In Pass 5, Bellman-Ford attempted further relaxation on cycle edge <strong>Z&rarr;X (-10.0s)</strong>. Because the cycle sum is negative (4 + 4 - 10 = -2.0s &lt; 0), shortest paths are undefined (&minus;&infin;). The algorithm successfully caught and halted this unbounded condition!
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
