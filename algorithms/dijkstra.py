@@ -104,6 +104,20 @@ def dijkstra(
         # Relax outgoing edges
         for v, weight in graph.get_neighbors(u):
             edges_relaxed += 1
+            if v in visited:
+                if record_events and len(events) < max_events:
+                    events.append({
+                        "type": "relax",
+                        "u": u,
+                        "v": v,
+                        "edge_w": weight,
+                        "old_dist": dist.get(v, 0.0),
+                        "new_dist": dist.get(v, 0.0),
+                        "updated": False,
+                        "caption": f"Node {v} is already in visited set (finalized). Greedy invariant skips relaxation."
+                    })
+                continue
+
             old_dist = dist.get(v, float("inf"))
             new_dist = d + weight
 
